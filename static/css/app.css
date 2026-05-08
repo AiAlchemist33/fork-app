@@ -6685,8 +6685,16 @@ html {
 }
 @keyframes upgrade-spin { 100% { transform: rotate(360deg); } }
 
-/* Body scroll-lock while sheet is open */
-html.upgrade-sheet-open, html.upgrade-sheet-open body {
+/* Body scroll-lock while any sheet is open. Phase 7a: three sub-sheets
+   (acct-settings, about, help) were adding their `*-sheet-open` class
+   to <html> but had NO matching CSS rule, so the underlying page kept
+   accepting scroll events. On iOS Safari this leaks momentum scroll
+   into the sheet's animation frames — a contributor to the FAQ-lag
+   complaint that Phases 6d.7/6d.8 didn't fix. */
+html.upgrade-sheet-open, html.upgrade-sheet-open body,
+html.acct-settings-sheet-open, html.acct-settings-sheet-open body,
+html.about-sheet-open, html.about-sheet-open body,
+html.help-sheet-open, html.help-sheet-open body {
   overflow: hidden;
 }
 
@@ -6879,8 +6887,11 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
   background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   transition: opacity 280ms ease;
-  -webkit-backdrop-filter: blur(2px);
-          backdrop-filter: blur(2px);
+  /* Phase 7a: removed `backdrop-filter: blur(2px)`. At opacity 1 the
+     0.62 black is opaque enough that the 2px blur is invisible — but
+     the GPU still composites it as a separate layer that re-fires
+     whenever content beneath it changes (FAQ animations, scroll, etc.).
+     One less layer to recomposite per frame across all sub-sheets. */
 }
 .acct-settings-sheet.visible .acct-settings-sheet-backdrop { opacity: 1; }
 
@@ -6994,8 +7005,7 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
   background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   transition: opacity 280ms ease;
-  -webkit-backdrop-filter: blur(2px);
-          backdrop-filter: blur(2px);
+  /* Phase 7a: dropped backdrop-filter — see acct-settings-sheet-backdrop. */
 }
 .about-sheet.visible .about-sheet-backdrop,
 .help-sheet.visible .help-sheet-backdrop { opacity: 1; }
@@ -7227,17 +7237,34 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
    - Removed the `transition: background` (only border-color animates
      now). One less property the compositor has to track per frame
      across all items. */
+/* Phase 7a: lift the FAQ list onto its own compositor layer so the
+   help-sheet-card's `glass--strong` (32px backdrop blur) stops re-
+   compositing through the FAQ pixels every animation frame. The blur
+   was the dominant cause of the persistent FAQ-lag complaint that
+   survived 6d.7 (added contain) and 6d.8 (max-height swap).
+   `isolation: isolate` creates a stacking context that the browser
+   can promote to an independent layer; `transform: translateZ(0)`
+   nudges Safari into actually doing so. `contain` on the list parent
+   stops parent flex re-layout from rippling on every height change. */
 .help-faq-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  isolation: isolate;
+  transform: translateZ(0);
+  contain: layout style paint;
 }
 .help-faq-item {
   background: rgba(var(--t1-rgb, 245, 235, 215), 0.035);
   border: 1px solid var(--border);
   border-radius: 20px;
   overflow: hidden;
-  transition: border-color 0.25s ease;
+  /* Phase 7a: dropped `transition: border-color 0.25s`. border-color
+     is a paint property (no GPU path) and it ran concurrently with
+     the answer's max-height transition on every tap — three concurrent
+     non-GPU transitions per tap (border-color + chevron color +
+     max-height). The instant border swap is imperceptible at this
+     contrast and saves a paint pass. */
   contain: layout style paint;
 }
 .help-faq-item.open {
@@ -7276,7 +7303,11 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
   display: grid;
   place-items: center;
   color: var(--t3);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+  /* Phase 7a: dropped `, color 0.2s`. `color` triggers SVG stroke
+     repaint per frame on Safari and runs alongside max-height +
+     transform — three concurrent transitions per tap. The instant
+     color swap on `.open` is imperceptible. */
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 .help-faq-chevron svg { width: 12px; height: 12px; }
@@ -7298,6 +7329,13 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
   transition: max-height .28s cubic-bezier(.4, 0, .2, 1);
 }
 .help-faq-item.open .help-faq-a { max-height: 360px; }
+/* Phase 7a: search-filter hide state. Replaces `item.hidden = !match`
+   in the JS handler — using the `hidden` attribute is functionally
+   equivalent to display:none but semantically signals to AT that the
+   element is removed from the a11y tree. This dedicated class keeps
+   the option open to swap in a fade-out transition later without
+   touching JS. */
+.help-faq-item.is-filtered { display: none; }
 .help-faq-a-inner { /* no special rules needed for max-height path */ }
 .help-faq-a-pad {
   padding: 0 20px 20px;
@@ -7437,8 +7475,7 @@ html.upgrade-sheet-open, html.upgrade-sheet-open body {
   background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   transition: opacity 280ms ease;
-  -webkit-backdrop-filter: blur(2px);
-          backdrop-filter: blur(2px);
+  /* Phase 7a: dropped backdrop-filter — see acct-settings-sheet-backdrop. */
 }
 .legal-modal.visible .legal-modal-backdrop { opacity: 1; }
 

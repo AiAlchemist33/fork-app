@@ -4780,17 +4780,33 @@ function setupAccount() {
   const helpFaqSearchInput = document.getElementById('helpFaqSearchInput');
   const helpFaqEmpty       = document.getElementById('helpFaqEmpty');
   if (helpFaqSearchInput) {
+    // Phase 7a: precompute the search corpus once (instead of touching
+    // textContent on 24 elements per keystroke), and rAF-batch the DOM
+    // writes so a fast typist doesn't trigger 12+ classList toggles
+    // and a layout-recalc per character. Switched from `item.hidden`
+    // (DOM attribute mutation) to `.is-filtered` class toggle so all
+    // visibility logic is in one CSS rule.
+    const faqCorpus = Array.from(helpFaqItems).map(item => ({
+      item,
+      text: (
+        (item.querySelector('.help-faq-q-text')?.textContent || '') + ' ' +
+        (item.querySelector('.help-faq-a-pad')?.textContent || '')
+      ).toLowerCase(),
+    }));
+    let faqFilterRaf = 0;
     helpFaqSearchInput.addEventListener('input', () => {
-      const query = helpFaqSearchInput.value.trim().toLowerCase();
-      let visible = 0;
-      helpFaqItems.forEach(item => {
-        const qText = (item.querySelector('.help-faq-q-text')?.textContent || '').toLowerCase();
-        const aText = (item.querySelector('.help-faq-a-pad')?.textContent || '').toLowerCase();
-        const match = !query || qText.includes(query) || aText.includes(query);
-        item.hidden = !match;
-        if (match) visible++;
+      if (faqFilterRaf) return;
+      faqFilterRaf = requestAnimationFrame(() => {
+        faqFilterRaf = 0;
+        const query = helpFaqSearchInput.value.trim().toLowerCase();
+        let visible = 0;
+        for (const { item, text } of faqCorpus) {
+          const match = !query || text.includes(query);
+          item.classList.toggle('is-filtered', !match);
+          if (match) visible++;
+        }
+        if (helpFaqEmpty) helpFaqEmpty.hidden = visible !== 0;
       });
-      if (helpFaqEmpty) helpFaqEmpty.hidden = visible !== 0;
     });
   }
   // Phase 6c — Email change/add. The Изменить / Добавить button toggles
