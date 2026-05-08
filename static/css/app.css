@@ -2048,21 +2048,8 @@ body[data-user-role="guest"] [data-guest-actions] { display: flex; }
   background-size: 160px 160px;
 }
 
-/* Optional top-right kicker — "АНАЛИЗ" / timestamp, very small caps */
-.hero-meta-tag {
-  position: absolute; top: 14px; right: 14px;
-  z-index: 3;
-  font-family: var(--fmono); font-size: 9px; font-weight: 700;
-  color: var(--t1); opacity: 0.7;
-  text-transform: uppercase; letter-spacing: 2px;
-  padding: 4px 8px;
-  background: rgba(26,23,20,.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-radius: var(--r-sm);
-  border: 1px solid rgba(var(--t1-rgb),.1);
-}
-.hero-meta-tag[hidden] { display: none; }
+/* Phase 7d: removed .hero-meta-tag CSS + #heroMetaTag HTML span. The
+   element was permanently `hidden` and no JS code path ever toggled it. */
 
 .hero-content {
   position: absolute;
@@ -3855,147 +3842,6 @@ body[data-user-role="guest"] [data-guest-actions] { display: flex; }
    moved to its consolidated definition under the .account-card-identity
    block. Verified zero DOM/JS references before deletion. */
 
-/* ── Wheel picker (custom horizontal scroll-snap) ──────────────────
-   Used for weight, height, birth-year. The track is a horizontally-
-   scrolling list of cells; CSS scroll-snap holds the chosen value at
-   center; JS reads scrollLeft to extract the value. Side gradient
-   masks fade the edges so it reads as an infinite roll. The center
-   indicator is a subtle pair of warm vertical lines marking the
-   "selected" slot. */
-.wheel {
-  position: relative;
-  height: 48px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  /* Premium depth — was hard rgba(0,0,0,.30) inset shadows that read as
-     a "deep slot punched into a panel". Toned to subtle theme-shadow
-     at lower alpha so the wheel reads as a refined surface rather than
-     mechanical groove. Plus a top highlight for the lifted-glass feel. */
-  box-shadow:
-    inset 0 1px 2px rgba(var(--shadow-rgb), .12),
-    inset 0 -1px 0 rgba(var(--glass-tint-rgb), .15);
-  /* Compositor isolation — paint + layout containment means the rest
-     of the sheet doesn't repaint when wheel cells change scale.
-     Significantly smoother during scroll AND during sheet drag-down. */
-  contain: layout paint style;
-  /* isolate creates a new stacking context so the wheel's overflow:
-     hidden reliably clips scaled cells on iOS Safari. */
-  isolation: isolate;
-  /* Promote to its own GPU layer. Cheaper than will-change because it
-     doesn't allocate the layer permanently; combined with `contain`
-     above, iOS Safari treats the wheel as a self-contained surface. */
-  transform: translateZ(0);
-  /* Robust visual clipping. iOS Safari's `overflow: hidden` is
-     unreliable when transformed children (the scaled selected cell)
-     interact with the parent sheet's translate3d transform — cells
-     can bleed visually above/below the wheel. clip-path forces a
-     pixel-precise rounded-rect clip that respects the border-radius
-     regardless of compositor layer placement. */
-  clip-path: inset(0 round var(--r-md));
-  -webkit-clip-path: inset(0 round var(--r-md));
-}
-.wheel-track {
-  flex: 1;
-  display: flex;
-  /* overflow: hidden kills native gesture scrolling entirely. Vertical
-     drags can no longer bleed to the parent (the original problem),
-     and horizontal drags can no longer fight our JS-driven scroll.
-     scrollLeft still works programmatically — the WheelPicker class
-     drives it from pointermove, applies momentum on release, and
-     snaps to the nearest cell. */
-  overflow: hidden;
-  scrollbar-width: none;
-  padding: 0;
-  height: 100%;
-  align-items: center;
-  /* touch-action: none kills ALL native gesture handling so the
-     pointer events we listen for are the only source of motion.
-     Combined with preventDefault on pointermove, vertical drags
-     can't escape to the parent sheet. */
-  touch-action: none;
-}
-.wheel-track::-webkit-scrollbar { display: none; }
-.wheel-cell {
-  flex-shrink: 0;
-  width: 56px;            /* MUST match cellWidth in WheelPicker JS */
-  text-align: center;
-  /* Syne (display font) instead of JetBrains Mono — the mono read as
-     "calculator/instrument display"; Syne is the refined display
-     voice the brand uses for cal-numbers and hero numerals. */
-  font-family: var(--fdisp);
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -.3px;
-  color: var(--t4);
-  opacity: .50;
-  line-height: 48px;
-  font-variant-numeric: tabular-nums;
-  transform: scale(1);
-  transform-origin: center center;
-  transition:
-    transform 200ms cubic-bezier(.34, 1.56, .64, 1),
-    color 180ms ease,
-    opacity 180ms ease,
-    font-weight 180ms ease;
-  pointer-events: none;
-}
-.wheel-cell.is-near {
-  color: var(--t2);
-  opacity: .78;
-  transform: scale(1.06);
-}
-.wheel-cell.is-selected {
-  color: var(--t1);
-  opacity: 1;
-  transform: scale(1.32);
-  font-weight: 600;
-}
-.wheel-mask-l, .wheel-mask-r {
-  position: absolute; top: 0; bottom: 0;
-  width: 30%;
-  pointer-events: none;
-  z-index: 2;
-}
-.wheel-mask-l { left: 0;  background: linear-gradient(90deg,  var(--bg3) 0%, transparent 100%); }
-.wheel-mask-r { right: 0; background: linear-gradient(-90deg, var(--bg3) 0%, transparent 100%); }
-.wheel-indicator {
-  position: absolute;
-  top: 5px; bottom: 5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 56px;
-  pointer-events: none;
-  z-index: 1;
-  /* Premium glass pill — no hard borders. Soft accent fill with a
-     subtle lifted highlight at the top edge and gentle inset shadow
-     at the bottom. Reads as a refined glass capsule cradling the
-     selected value rather than a mechanical bracket. */
-  background: rgba(var(--green-rgb), .14);
-  border: 1px solid rgba(var(--green-rgb), .28);
-  border-radius: 10px;
-  box-shadow:
-    inset 0 1px 0 rgba(var(--glass-tint-rgb), .22),
-    inset 0 -1px 0 rgba(var(--shadow-rgb), .10),
-    0 1px 3px rgba(var(--green-rgb), .12);
-}
-.wheel-unit {
-  position: absolute;
-  right: 12px; top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--fmono);
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--t3);
-  pointer-events: none;
-  z-index: 3;
-  background: linear-gradient(90deg, transparent 0%, var(--bg3) 30%);
-  padding-left: 14px;
-}
 
 /* ── Gender pill ─────────────────────────────────────────────────
    Two-slot segmented control: icon + small label per slot. Tighter
@@ -4598,12 +4444,8 @@ html {
 .account-id-badge:empty {
   display: none;
 }
-.account-identity-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex-shrink: 0;
-}
+/* Phase 7d: removed .account-identity-actions — the wrapper element
+   was retired during Phase 6a redesign and never restored to markup. */
 
 /* (Legacy .account-ghost-btn removed — replaced by .account-avatar-badge
    for the avatar +/X actions. Verified zero DOM/JS references.) */
@@ -6842,13 +6684,9 @@ html.help-sheet-open, html.help-sheet-open body {
 /* Disabled "coming soon" tile — same chrome as account-disclosure but
    muted and non-interactive. The 'скоро' subtext signals state without
    needing a label. */
-.account-disclosure--coming {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-.account-disclosure--coming .account-disclosure-sub {
-  font-style: italic;
-}
+/* Phase 7d: removed .account-disclosure--coming — placeholder for
+   "coming soon" disclosure rows that Phase 6a replaced with fully
+   wired tiles. Never assigned in markup. */
 
 /* Version footer — quiet metadata at the bottom of the Дополнительно
    card. Legal links inherit the muted treatment so they don't compete
@@ -6954,7 +6792,10 @@ html.help-sheet-open, html.help-sheet-open body {
    matching the parent settings/calendar/account sheet behavior. */
 
 .acct-settings-sheet-body {
-  padding: 20px 22px 26px;
+  /* Phase 7d: padding values consolidated. Was 20/22/26 here, then
+     overridden later in the file with 14/18/28 — the second always
+     won. Merged into a single declaration here. */
+  padding: 14px 18px 28px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -7992,11 +7833,6 @@ html.legal-locked, html.legal-locked body {
 }
 .acct-danger-btn svg { width: 14px; height: 14px; }
 
-/* Body layout adjustments to use the new vertical rhythm. */
-.acct-settings-sheet-body {
-  gap: 14px;
-  padding: 14px 18px 28px;
-}
 .acct-settings-sheet-body .acct-settings-error {
   margin: -4px 0 0;
 }
