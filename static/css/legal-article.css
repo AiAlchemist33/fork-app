@@ -12,20 +12,24 @@
    ════════════════════════════════════════════════════════════════════ */
 
 .legal-modal-content {
-  /* Pinned tokens — the modal floats on the login page where these
-     vars may not exist or may have different values. Hard-coding here
-     keeps the article's appearance consistent with the standalone page. */
-  --la-accent:    #C9943A;
-  --la-accent-br: #DEB05A;
-  --la-t1:        #F1E9D2;
-  --la-t2:        #A89A86;
-  --la-t3:        #6B5F50;
-  --la-t4:        #4A4035;
+  /* Phase 7g: tokens now follow the active app theme via var() fallbacks.
+     When the modal opens inside the main app, --t1/-t2/-t3/-t4/--green
+     resolve from the user's selected theme (Hearth / Linen / Carbon /
+     Verdant) so the legal article matches the rest of the UI instead
+     of staying warm-Hearth on every theme. The hex fallbacks keep the
+     warm look when the article runs standalone (/privacy page from the
+     login flow), where the app theme tokens may not be present. */
+  --la-accent:    var(--green,    #C9943A);
+  --la-accent-br: var(--green-br, #DEB05A);
+  --la-t1:        var(--t1,       #F1E9D2);
+  --la-t2:        var(--t2,       #A89A86);
+  --la-t3:        var(--t3,       #6B5F50);
+  --la-t4:        var(--t4,       #4A4035);
   --la-rule:      rgba(198,183,155, 0.06);
 
-  --la-display:   'Syne', system-ui, -apple-system, sans-serif;
-  --la-body:      'Figtree', system-ui, -apple-system, sans-serif;
-  --la-mono:      'JetBrains Mono', ui-monospace, monospace;
+  --la-display:   var(--fdisp, 'Syne', system-ui, -apple-system, sans-serif);
+  --la-body:      var(--fbody, 'Figtree', system-ui, -apple-system, sans-serif);
+  --la-mono:      var(--fmono, 'JetBrains Mono', ui-monospace, monospace);
 
   flex: 1;
   overflow-y: auto;

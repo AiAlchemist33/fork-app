@@ -3317,18 +3317,28 @@ function populateAcctSettingsSheet(user) {
   if (btnAccountChangePasswordRow) btnAccountChangePasswordRow.setAttribute('aria-expanded', 'false');
 }
 
+// Phase 7g: each sub-sheet keeps a release function for its active
+// focus trap. Stored on a module-scoped object so the close fn can
+// retrieve and call it without parameter passing.
+const _sheetFocusReleases = {};
+
 function openAcctSettingsSheet() {
   if (!acctSettingsSheet) return;
   setAcctSettingsError('');
   acctSettingsSheet.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => acctSettingsSheet.classList.add('visible'));
   document.documentElement.classList.add('acct-settings-sheet-open');
+  _sheetFocusReleases.acctSettings = attachFocusTrap(acctSettingsSheet.querySelector('.acct-settings-sheet-card'));
 }
 function closeAcctSettingsSheet() {
   if (!acctSettingsSheet) return;
   acctSettingsSheet.classList.remove('visible');
   document.documentElement.classList.remove('acct-settings-sheet-open');
   setTimeout(() => acctSettingsSheet.setAttribute('aria-hidden', 'true'), 400);
+  if (_sheetFocusReleases.acctSettings) {
+    _sheetFocusReleases.acctSettings();
+    _sheetFocusReleases.acctSettings = null;
+  }
 }
 
 // Phase 6b — About + Help sub-sheets. Identical mechanics to the
@@ -3340,12 +3350,17 @@ function openAboutSheet() {
   aboutSheet.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => aboutSheet.classList.add('visible'));
   document.documentElement.classList.add('about-sheet-open');
+  _sheetFocusReleases.about = attachFocusTrap(aboutSheet.querySelector('.about-sheet-card'));
 }
 function closeAboutSheet() {
   if (!aboutSheet) return;
   aboutSheet.classList.remove('visible');
   document.documentElement.classList.remove('about-sheet-open');
   setTimeout(() => aboutSheet.setAttribute('aria-hidden', 'true'), 400);
+  if (_sheetFocusReleases.about) {
+    _sheetFocusReleases.about();
+    _sheetFocusReleases.about = null;
+  }
 }
 function openHelpSheet() {
   if (!helpSheet) return;
@@ -3367,12 +3382,17 @@ function openHelpSheet() {
   helpSheet.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => helpSheet.classList.add('visible'));
   document.documentElement.classList.add('help-sheet-open');
+  _sheetFocusReleases.help = attachFocusTrap(helpSheet.querySelector('.help-sheet-card'));
 }
 function closeHelpSheet() {
   if (!helpSheet) return;
   helpSheet.classList.remove('visible');
   document.documentElement.classList.remove('help-sheet-open');
   setTimeout(() => helpSheet.setAttribute('aria-hidden', 'true'), 400);
+  if (_sheetFocusReleases.help) {
+    _sheetFocusReleases.help();
+    _sheetFocusReleases.help = null;
+  }
 }
 
 // Phase 6d.3 — In-app legal popup. Mirrors the /login implementation
@@ -3432,6 +3452,7 @@ async function openLegal(kind) {
   legalModal.setAttribute('aria-hidden', 'false');
   requestAnimationFrame(() => legalModal.classList.add('visible'));
   document.documentElement.classList.add('legal-locked');
+  _sheetFocusReleases.legal = attachFocusTrap(legalModal.querySelector('.legal-modal-sheet'));
 
   try {
     let html = _legalCache[kind];
@@ -3465,6 +3486,10 @@ function closeLegal() {
     legalModal.setAttribute('aria-hidden', 'true');
     if (legalModalContent) legalModalContent.innerHTML = '';
   }, 400);
+  if (_sheetFocusReleases.legal) {
+    _sheetFocusReleases.legal();
+    _sheetFocusReleases.legal = null;
+  }
 }
 
 function setAccountSheetError(msg, kind) {
@@ -3875,6 +3900,61 @@ async function applyAccountFromInputs() {
 // Maps / Apple Music's bottom-sheet behavior.
 //
 // Movement is locked to the vertical axis: a horizontal-dominant
+// Phase 7g: focus trap for sheets/modals. When a sheet opens, keyboard
+// users (and VoiceOver users on iOS Safari, which ignores aria-modal)
+// can otherwise Tab into the underlying page. attachFocusTrap returns
+// a release function that the close handler must call to remove the
+// listener and restore focus to the element that was focused before
+// the sheet opened. Designed to be cheap: one keydown listener per
+// open sheet, removed on close. Selector list covers the elements
+// the app actually uses; expand as needed.
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+function attachFocusTrap(container) {
+  if (!container) return () => {};
+  const previouslyFocused = document.activeElement;
+  const onKey = (e) => {
+    if (e.key !== 'Tab') return;
+    const focusable = Array.from(container.querySelectorAll(FOCUSABLE_SELECTOR))
+      .filter(el => !el.hidden && el.offsetParent !== null);
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+  container.addEventListener('keydown', onKey);
+  // Best-effort initial focus — the sheet's first focusable, which is
+  // typically a Cancel/Close button or the first input. If none are
+  // focusable yet (sheet animating in), leave focus where it was.
+  requestAnimationFrame(() => {
+    const initial = container.querySelector(FOCUSABLE_SELECTOR);
+    if (initial && typeof initial.focus === 'function') {
+      try { initial.focus({ preventScroll: true }); } catch (_) { initial.focus(); }
+    }
+  });
+  return () => {
+    container.removeEventListener('keydown', onKey);
+    if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+      try { previouslyFocused.focus({ preventScroll: true }); } catch (_) { previouslyFocused.focus(); }
+    }
+  };
+}
+
 // drag (e.g. spinning a wheel) bails out so the wheel's own scroll
 // keeps working. Pointer capture so the gesture survives the finger
 // leaving the element. Inline transform during drag, restored to ''
@@ -4399,6 +4479,21 @@ function setupAccount() {
     const body = helpSheetCard.querySelector('.help-sheet-body');
     attachSheetDragToClose(helpSheetCard, closeHelpSheet, body);
   }
+
+  // Phase 7g: Escape closes acct-settings / about / help sub-sheets.
+  // Legal modal already has its own Esc handler at line 4421. The three
+  // checks are mutually exclusive on visibility so only the topmost
+  // visible sub-sheet closes per keypress.
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (acctSettingsSheet && acctSettingsSheet.classList.contains('visible')) {
+      closeAcctSettingsSheet();
+    } else if (aboutSheet && aboutSheet.classList.contains('visible')) {
+      closeAboutSheet();
+    } else if (helpSheet && helpSheet.classList.contains('visible')) {
+      closeHelpSheet();
+    }
+  });
 
   // Phase 6d.3 — legal popup wiring. One delegated click handler at the
   // document level catches every [data-legal] anchor (current + future)
