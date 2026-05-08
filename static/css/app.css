@@ -98,14 +98,22 @@
   --type-display-s-size:  18px;   --type-display-s-weight:  600;  --type-display-s-ls:  -.4px;
 
   /* Title — sheet/modal headers (Syne 700, -.3px LS). The page-title
-     and title-card variants were defined upfront but never adopted by
-     any selector — page titles are still inline-defined. */
+     variant (Phase 7c) is the heading inside a sub-sheet body, e.g.
+     "Помощь" / "О приложении" / "Дополнительно". Three different
+     sizes (22 / 24 / 28px) had drifted across Phase 6a-6d.5; canonized
+     to 24px here as the conservative middle ground. About-Help bumped
+     down from 28; About bumped up from 22; Account hub stays at 24. */
   --type-title-sheet-size: 18px; --type-title-sheet-weight: 700; --type-title-sheet-ls: -.3px;
+  --type-title-page-size:  24px; --type-title-page-weight:  700; --type-title-page-ls:  -.5px;
 
-  /* Button — single canonical size for sheet/modal CTAs. The .auth-submit
-     full-page CTA stays a tier larger (15px) because it's an isolated
-     focal action, not part of a row. */
-  --type-button-size:   13px; --type-button-weight:   600; --type-button-ls:   .2px;
+  /* Button — Phase 7c canonized to 14px after Phase 6d.4 introduced a
+     parallel 14px population (.acct-btn-primary / -ghost / .acct-text-btn
+     / .acct-danger-btn) without updating the token. The token now matches
+     the newer direction; the older 13px buttons (.add-sheet-btn,
+     .settings-sheet-save, .confirm-modal-btn) get a 1px bump for free.
+     The .auth-submit full-page CTA stays a tier larger (15px) because it's
+     an isolated focal action, not part of a row. */
+  --type-button-size:   14px; --type-button-weight:   600; --type-button-ls:   .2px;
 
   /* Captions — uppercase mono, weight 700, letter-spacing in `em` so
      it scales with size. The 9px caption is for tight tile labels;
@@ -4390,10 +4398,12 @@ html {
   flex-shrink: 0;
 }
 .account-page-title {
+  /* Phase 7c: migrated to --type-title-page-* tokens. Was inline 24/700/-.5px,
+     which became the canon size when the token was introduced. */
   font-family: var(--fdisp);
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -.5px;
+  font-size: var(--type-title-page-size);
+  font-weight: var(--type-title-page-weight);
+  letter-spacing: var(--type-title-page-ls);
   color: var(--t1);
   margin: 0;
 }
@@ -6969,7 +6979,10 @@ html.help-sheet-open, html.help-sheet-open body {
   margin: 0;
   min-height: 16px;
   font-size: 12px;
-  color: rgb(220, 130, 130);
+  /* Phase 7c: was hardcoded rgb(220,130,130) — locked the message to
+     a warm-pink red on every theme. Now follows --error so Linen
+     gets a darker red, Carbon stays warm, etc. */
+  color: var(--error);
   text-align: center;
 }
 .acct-settings-error:empty { min-height: 0; }
@@ -7066,12 +7079,14 @@ html.help-sheet-open, html.help-sheet-open body {
 }
 
 .about-sheet-title {
+  /* Phase 7c: 22px → 24px and migrated to --type-title-page-* tokens.
+     Was the smallest of the three drifted page-title sizes. */
   margin: 4px 0 0;
   font-family: var(--fdisp);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: var(--type-title-page-size);
+  font-weight: var(--type-title-page-weight);
+  letter-spacing: var(--type-title-page-ls);
   color: var(--t1);
-  letter-spacing: -.5px;
 }
 /* Phase 6d.5: deleted .help-sheet-title rule — replaced by
    .help-page-title inside the new page-head structure. */
@@ -7170,11 +7185,14 @@ html.help-sheet-open, html.help-sheet-open body {
   padding: 0 4px 6px;
 }
 .help-page-title {
+  /* Phase 7c: 28px → 24px (the canonical page-title size) and migrated
+     to --type-title-page-* tokens. Was the largest of the three drifted
+     page-title sizes; now matches Account hub. */
   margin: 0;
   font-family: var(--fdisp);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: var(--type-title-page-size);
+  font-weight: var(--type-title-page-weight);
+  letter-spacing: var(--type-title-page-ls);
   line-height: 1.1;
   color: var(--t1);
 }
@@ -7573,11 +7591,12 @@ html.legal-locked, html.legal-locked body {
   padding: 0 4px 6px;
 }
 .acct-page-title {
+  /* Phase 7c: 28px → 24px (canonical) and migrated to tokens. */
   margin: 0;
   font-family: var(--fdisp);
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: var(--type-title-page-size);
+  font-weight: var(--type-title-page-weight);
+  letter-spacing: var(--type-title-page-ls);
   line-height: 1.1;
   color: var(--t1);
 }
@@ -7715,7 +7734,10 @@ html.legal-locked, html.legal-locked body {
   border: none;
   color: var(--t1);
   font: inherit;
-  font-size: 14px;
+  /* Phase 7c: migrated to --type-button-* tokens (now 14px). The
+     font-weight: 500 is a deliberate exception — link-style button
+     reads quieter than the solid 600-weight CTAs. */
+  font-size: var(--type-button-size);
   font-weight: 500;
   cursor: pointer;
   padding: 6px 0;
@@ -7828,8 +7850,9 @@ html.legal-locked, html.legal-locked body {
   border: none;
   border-radius: 999px;
   font: inherit;
-  font-size: 14px;
-  font-weight: 600;
+  /* Phase 7c: migrated to --type-button-* tokens. */
+  font-size: var(--type-button-size);
+  font-weight: var(--type-button-weight);
   letter-spacing: -0.01em;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.15s ease;
@@ -7849,7 +7872,8 @@ html.legal-locked, html.legal-locked body {
   border: none;
   border-radius: 999px;
   font: inherit;
-  font-size: 14px;
+  /* Phase 7c: migrated to --type-button-size token. */
+  font-size: var(--type-button-size);
   cursor: pointer;
   transition: color 0.2s ease;
 }
@@ -7943,11 +7967,16 @@ html.legal-locked, html.legal-locked body {
   width: 100%;
   height: 56px;
   background: transparent;
-  border: 1px dashed rgba(255, 107, 107, 0.25);
+  /* Phase 7c: hardcoded `rgb(255,107,107)` replaced with var(--error)
+     so the button adapts across all four themes instead of staying
+     pink-red on Carbon and Linen. The dashed border alpha and
+     hover bg use rgba(var(--error-rgb), …) for the same reason. */
+  border: 1px dashed rgba(var(--error-rgb), 0.30);
   border-radius: 14px;
-  color: rgb(255, 107, 107);
+  color: var(--error);
   font: inherit;
-  font-size: 14px;
+  /* Phase 7c: migrated to --type-button-size token. */
+  font-size: var(--type-button-size);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -7957,9 +7986,9 @@ html.legal-locked, html.legal-locked body {
   transition: background 0.25s ease, border-color 0.25s ease, border-style 0.25s ease;
 }
 .acct-danger-btn:hover {
-  background: rgba(255, 107, 107, 0.08);
+  background: rgba(var(--error-rgb), 0.08);
   border-style: solid;
-  border-color: rgba(255, 107, 107, 0.4);
+  border-color: rgba(var(--error-rgb), 0.4);
 }
 .acct-danger-btn svg { width: 14px; height: 14px; }
 
