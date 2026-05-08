@@ -3524,7 +3524,11 @@ body[data-user-role="guest"] [data-guest-actions] { display: flex; }
 .add-sheet-field input {
   background: var(--bg3); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: 12px 14px;
-  font-family: var(--fbody); font-size: 15px; color: var(--t1);
+  /* Phase 7b: 15px → 16px. iOS Safari zooms the viewport on focus when
+     a text input's computed font-size is below 16px. This silently
+     broke the "Add manual entry" flow on iPhone. Same fix applied to
+     .upgrade-field input and .acct-input. */
+  font-family: var(--fbody); font-size: 16px; color: var(--t1);
   outline: none;
   transition: border-color .15s, box-shadow .15s;
   -webkit-appearance: none; appearance: none;
@@ -6479,7 +6483,9 @@ html {
   border-radius: 12px;
   padding: 11px 14px;
   font-family: var(--fbody, 'Figtree', system-ui);
-  font-size: 15px;
+  /* Phase 7b: 15px → 16px to suppress iOS Safari zoom-on-focus during
+     registration. See .add-sheet-field input for the full rationale. */
+  font-size: 16px;
   color: var(--t1);
   transition: border-color 200ms ease, background 200ms ease;
 }
@@ -7762,7 +7768,9 @@ html.legal-locked, html.legal-locked body {
   border-radius: 14px;
   color: var(--t1);
   font: inherit;
-  font-size: 15px;
+  /* Phase 7b: 15px → 16px. Suppresses iOS Safari zoom-on-focus on the
+     account-settings email/password forms. */
+  font-size: 16px;
   outline: none;
   transition: border-color 0.2s ease, background 0.2s ease;
 }
@@ -7777,6 +7785,33 @@ html.legal-locked, html.legal-locked body {
   color: var(--t3);
   line-height: 1.45;
   padding: 2px 4px;
+}
+
+/* Phase 7b: focus-revealed rule helper. Replaces the "(мин 4)" text
+   that was previously baked into the password placeholder — per the
+   project's contextual-form UX rule (no rules in placeholders;
+   reveal them on focus). The wrap groups the input + rule so
+   :focus-within can target the rule for a smooth fade-in. */
+.acct-input-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.acct-input-rule {
+  font-size: 12px;
+  color: var(--t3);
+  line-height: 1.4;
+  padding: 0 4px;
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height .22s ease, opacity .22s ease;
+}
+.acct-input-wrap:focus-within .acct-input-rule {
+  max-height: 24px;
+  opacity: 1;
 }
 .acct-form-actions {
   display: flex;
