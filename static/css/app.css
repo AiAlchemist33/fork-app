@@ -6751,30 +6751,63 @@ html.help-sheet-open, html.help-sheet-open body {
   opacity: 0.55;
 }
 
-/* ── Sub-sheet shell (modeled on .upgrade-sheet) ─────────────────── */
-.acct-settings-sheet {
+/* ════════════════════════════════════════════════════════════════════
+   SUB-SHEET SHELL — shared shell for the four bottom-sliding sub-sheets:
+     .acct-settings-sheet, .about-sheet, .help-sheet, .legal-modal.
+
+   Phase 7f: previously the four sheets each had a complete duplicated
+   shell block (~50 lines × 3 ≈ 150 lines of repetition). Now the shared
+   chrome lives in a single rule list per shell concern; per-sheet
+   overrides (legal-modal's wider max-width and z-index) follow.
+   .legal-modal-sheet uses an outlier element name (-sheet vs the others'
+   -card) — both are included in every shared selector list below.
+
+   Naming map: the outer container is `*-sheet` (or `.legal-modal`); the
+   sliding card inside is `*-sheet-card` (or `.legal-modal-sheet`); the
+   backdrop is `*-sheet-backdrop` (or `.legal-modal-backdrop`); the
+   drag-handle pill is `*-sheet-handle` (or `.legal-modal-handle`).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Outer container — full-screen, non-interactive until visible. */
+.acct-settings-sheet,
+.about-sheet,
+.help-sheet,
+.legal-modal {
   position: fixed;
   inset: 0;
   z-index: 110;
   pointer-events: none;
 }
-.acct-settings-sheet.visible { pointer-events: auto; }
+.acct-settings-sheet.visible,
+.about-sheet.visible,
+.help-sheet.visible,
+.legal-modal.visible { pointer-events: auto; }
 
-.acct-settings-sheet-backdrop {
+/* Backdrop — dim wash that fades in. Phase 7a removed the blur(2px)
+   filter (invisible at full opacity 0.62, but cost a compositor layer
+   that recomposed on every content change beneath). */
+.acct-settings-sheet-backdrop,
+.about-sheet-backdrop,
+.help-sheet-backdrop,
+.legal-modal-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, 0.62);
   opacity: 0;
   transition: opacity 280ms ease;
-  /* Phase 7a: removed `backdrop-filter: blur(2px)`. At opacity 1 the
-     0.62 black is opaque enough that the 2px blur is invisible — but
-     the GPU still composites it as a separate layer that re-fires
-     whenever content beneath it changes (FAQ animations, scroll, etc.).
-     One less layer to recomposite per frame across all sub-sheets. */
 }
-.acct-settings-sheet.visible .acct-settings-sheet-backdrop { opacity: 1; }
+.acct-settings-sheet.visible .acct-settings-sheet-backdrop,
+.about-sheet.visible .about-sheet-backdrop,
+.help-sheet.visible .help-sheet-backdrop,
+.legal-modal.visible .legal-modal-backdrop { opacity: 1; }
 
-.acct-settings-sheet-card {
+/* Sliding card — bottom-aligned, slides up from translate3d(0,100%,0).
+   Phase 6d.8 removed the outer drop shadow that bled below the
+   viewport when closed; inner highlight kept for separation. */
+.acct-settings-sheet-card,
+.about-sheet-card,
+.help-sheet-card,
+.legal-modal-sheet {
   position: absolute;
   left: 0;
   right: 0;
@@ -6785,13 +6818,6 @@ html.help-sheet-open, html.help-sheet-open body {
   max-height: 92vh;
   border-radius: 22px 22px 0 0;
   background: var(--bg2);
-  /* Phase 6d.8: removed the outer drop shadow `0 -10px 40px rgba(0,0,0,.5)`.
-     It extends 50px UP from the card's top edge — when the card is
-     translated 100% off-screen (closed state), that 50px shadow
-     band is still rendered INSIDE the viewport, bleeding a dark
-     gradient at the bottom of every page. Inner highlight kept; the
-     backdrop blur+dim provides plenty of separation when the sheet
-     is actually open. */
   box-shadow: inset 0 1px 0 rgba(198, 183, 155, 0.10);
   transform: translate3d(0, 100%, 0);
   transition: transform 380ms cubic-bezier(.4, 0, .2, 1);
@@ -6800,11 +6826,30 @@ html.help-sheet-open, html.help-sheet-open body {
   overflow: hidden;
   touch-action: pan-y;
 }
-.acct-settings-sheet.visible .acct-settings-sheet-card {
+.acct-settings-sheet.visible .acct-settings-sheet-card,
+.about-sheet.visible .about-sheet-card,
+.help-sheet.visible .help-sheet-card,
+.legal-modal.visible .legal-modal-sheet {
   transform: translate3d(0, 0, 0);
 }
 
-.acct-settings-sheet-handle {
+/* Legal-modal overrides: content-heavy doc, wider on tablet/desktop;
+   sits on a higher z-index because legal can be invoked from on top
+   of the other three sub-sheets (accept-terms flow). */
+.legal-modal { z-index: 120; }
+.legal-modal-sheet {
+  max-width: 720px;
+  /* Fixed height instead of max-height — legal docs always want the full
+     sheet so the table-of-contents has room. */
+  height: 92vh;
+  max-height: none;
+}
+
+/* Drag-handle pill at the top of every card. */
+.acct-settings-sheet-handle,
+.about-sheet-handle,
+.help-sheet-handle,
+.legal-modal-handle {
   width: 40px; height: 4px;
   margin: 9px auto 0;
   border-radius: 999px;
@@ -6855,87 +6900,19 @@ html.help-sheet-open, html.help-sheet-open body {
 }
 .acct-settings-error:empty { min-height: 0; }
 
-/* Reduced-motion: skip the slide; just fade the backdrop. */
-@media (prefers-reduced-motion: reduce) {
-  .acct-settings-sheet-card,
-  .acct-settings-sheet-backdrop {
-    transition: opacity 180ms ease;
-  }
-  .acct-settings-sheet-card { transform: translate3d(0, 0, 0); }
-}
+/* Phase 7f: the reduced-motion blocks for all four sub-sheets are
+   consolidated into a single rule below the SUB-SHEET SHELL section
+   (search "Reduced-motion: skip the slide" at the bottom of the
+   legal-modal block). This stub is kept so future readers don't grep
+   for "@media" inside this section and assume it's missing. */
 
 
 /* ════════════════════════════════════════════════════════════════════
-   PHASE 6b — About + Help sub-sheets
-
-   Same shell pattern as the Phase 6a Account Settings sub-sheet; rules
-   are duplicated rather than refactored to a shared base class so 6a
-   stays untouched. If a 4th sub-sheet ever lands, refactor to a shared
-   .sub-sheet base then.
+   PHASE 6b — About + Help sub-sheet content
+   Phase 7f: shell rules (sheet, backdrop, card, handle) consolidated
+   with .acct-settings-sheet and .legal-modal at the SUB-SHEET SHELL
+   block above. Only About+Help-specific content rules remain here.
    ════════════════════════════════════════════════════════════════════ */
-
-/* ── Shell (shared between About + Help) ─────────────────────────── */
-.about-sheet,
-.help-sheet {
-  position: fixed;
-  inset: 0;
-  z-index: 110;
-  pointer-events: none;
-}
-.about-sheet.visible,
-.help-sheet.visible { pointer-events: auto; }
-
-.about-sheet-backdrop,
-.help-sheet-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.62);
-  opacity: 0;
-  transition: opacity 280ms ease;
-  /* Phase 7a: dropped backdrop-filter — see acct-settings-sheet-backdrop. */
-}
-.about-sheet.visible .about-sheet-backdrop,
-.help-sheet.visible .help-sheet-backdrop { opacity: 1; }
-
-.about-sheet-card,
-.help-sheet-card {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  margin: 0 auto;
-  width: 100%;
-  max-width: 480px;
-  max-height: 92vh;
-  border-radius: 22px 22px 0 0;
-  background: var(--bg2);
-  /* Phase 6d.8: removed outer drop shadow — see acct-settings-sheet-card
-     comment. Same fix for the same bottom-bleed bug. */
-  box-shadow: inset 0 1px 0 rgba(198, 183, 155, 0.10);
-  transform: translate3d(0, 100%, 0);
-  transition: transform 380ms cubic-bezier(.4, 0, .2, 1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  touch-action: pan-y;
-}
-.about-sheet.visible .about-sheet-card,
-.help-sheet.visible .help-sheet-card {
-  transform: translate3d(0, 0, 0);
-}
-
-.about-sheet-handle,
-.help-sheet-handle {
-  width: 40px; height: 4px;
-  margin: 9px auto 0;
-  border-radius: 999px;
-  background: rgba(198, 183, 155, 0.22);
-  flex-shrink: 0;
-}
-
-/* Phase 6d.2: deleted .about-sheet-close + .help-sheet-close rules.
-   Same reason as acct-settings — X buttons removed in favor of
-   swipe-down dismiss. */
 
 .about-sheet-body,
 .help-sheet-body {
@@ -7329,16 +7306,11 @@ html.help-sheet-open, html.help-sheet-open body {
   box-shadow: 0 8px 24px -8px rgba(var(--t1-rgb, 245, 235, 215), 0.4);
 }
 
-/* Reduced-motion: skip the slide + accordion easing. */
+/* Phase 7f: shell-specific reduced-motion rules consolidated below
+   the legal-modal block. The two FAQ-specific rules (.help-faq-a,
+   .help-faq-chevron) are sheet-content rather than shell, so they
+   stay here. */
 @media (prefers-reduced-motion: reduce) {
-  .about-sheet-card,
-  .about-sheet-backdrop,
-  .help-sheet-card,
-  .help-sheet-backdrop {
-    transition: opacity 180ms ease;
-  }
-  .about-sheet-card,
-  .help-sheet-card { transform: translate3d(0, 0, 0); }
   .help-faq-a { transition: none; }
   .help-faq-chevron { transition: none; }
 }
@@ -7346,6 +7318,10 @@ html.help-sheet-open, html.help-sheet-open body {
 
 /* ════════════════════════════════════════════════════════════════════
    PHASE 6d.3 — In-app legal popup (Политика / Условия)
+
+   Phase 7f: shell rules consolidated into the SUB-SHEET SHELL block
+   above. This section keeps only legal-modal-specific content rules
+   (scrollable doc body + error states).
 
    Replaces target=_blank navigation on legal links inside the main
    app (About sub-sheet, Дополнительно version footer). Mirrors the
@@ -7357,58 +7333,6 @@ html.help-sheet-open, html.help-sheet-open body {
    shared --t1/--t2/--bg theme tokens, so the popup automatically
    matches whatever theme the user picked in the Theme drawer).
    ════════════════════════════════════════════════════════════════════ */
-.legal-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 120;
-  pointer-events: none;
-}
-.legal-modal.visible { pointer-events: auto; }
-
-.legal-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.62);
-  opacity: 0;
-  transition: opacity 280ms ease;
-  /* Phase 7a: dropped backdrop-filter — see acct-settings-sheet-backdrop. */
-}
-.legal-modal.visible .legal-modal-backdrop { opacity: 1; }
-
-.legal-modal-sheet {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  margin: 0 auto;
-  width: 100%;
-  /* Wider than the action sub-sheets — legal docs are content-heavy
-     and benefit from more horizontal room on tablets/desktop. */
-  max-width: 720px;
-  height: 92vh;
-  border-radius: 22px 22px 0 0;
-  background: var(--bg2);
-  /* Phase 6d.8: removed outer drop shadow — see acct-settings-sheet-card. */
-  box-shadow: inset 0 1px 0 rgba(198, 183, 155, 0.10);
-  transform: translate3d(0, 100%, 0);
-  transition: transform 380ms cubic-bezier(.4, 0, .2, 1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  touch-action: pan-y;
-}
-.legal-modal.visible .legal-modal-sheet {
-  transform: translate3d(0, 0, 0);
-}
-
-.legal-modal-handle {
-  width: 40px;
-  height: 4px;
-  margin: 9px auto 0;
-  border-radius: 999px;
-  background: rgba(198, 183, 155, 0.22);
-  flex-shrink: 0;
-}
 
 .legal-modal-content {
   flex: 1;
@@ -7434,11 +7358,22 @@ html.help-sheet-open, html.help-sheet-open body {
   border-bottom: 1px dotted rgba(198, 183, 155, 0.30);
 }
 
+/* Reduced-motion: skip the slide + backdrop fade across all four
+   sub-sheets. Phase 7f consolidated three duplicated blocks into one. */
 @media (prefers-reduced-motion: reduce) {
+  .acct-settings-sheet-card,
+  .about-sheet-card,
+  .help-sheet-card,
   .legal-modal-sheet,
+  .acct-settings-sheet-backdrop,
+  .about-sheet-backdrop,
+  .help-sheet-backdrop,
   .legal-modal-backdrop {
     transition: opacity 180ms ease;
   }
+  .acct-settings-sheet-card,
+  .about-sheet-card,
+  .help-sheet-card,
   .legal-modal-sheet { transform: translate3d(0, 0, 0); }
 }
 
