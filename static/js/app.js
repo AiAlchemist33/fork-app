@@ -2334,7 +2334,12 @@ function renderDayHero() {
   dayHeroProgress.classList.toggle('over', over);
   const hasPrior = dayHeroProgress.dataset.pct !== undefined;
   const prevPct = parseFloat(dayHeroProgress.dataset.pct || '0');
-  requestAnimationFrame(() => { dayHeroProgress.style.width = pct + '%'; });
+  // Phase 7e: width → transform: scaleX. See CSS comment on
+  // .day-hero-progress-fill — moves the 900ms animation off the
+  // layout main thread onto the GPU.
+  requestAnimationFrame(() => {
+    dayHeroProgress.style.transform = 'scaleX(' + (pct / 100) + ')';
+  });
   if (hasPrior && pct > prevPct + 0.5) {
     // Restart the animation by toggling the class off-then-on across a frame.
     dayHeroProgress.classList.remove('afterglow');

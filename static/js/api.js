@@ -64,7 +64,15 @@ function compressImage(file, maxPx = 1280) {
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      canvas.toBlob(resolve, 'image/jpeg', 0.88);
+      canvas.toBlob(blob => {
+        // Phase 7e: explicitly release the canvas backing store. For a
+        // 1280×960 image the canvas holds ~5MB of pixel data; without
+        // this the GC may keep it alive across multiple scans, pushing
+        // older iPhones over their memory limit mid-session. Setting
+        // dimensions to 0 frees the backing store immediately.
+        canvas.width = 0; canvas.height = 0;
+        resolve(blob);
+      }, 'image/jpeg', 0.88);
     };
     img.src = url;
   });

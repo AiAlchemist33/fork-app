@@ -2781,7 +2781,9 @@ body[data-user-role="guest"] [data-guest-actions] { display: flex; }
   margin-top:6px; padding:11px 32px; border-radius:var(--r-max);
   background:var(--glass); border:1px solid var(--border);
   color:var(--t1); font-size:14px; font-weight:600;
-  transition:all .15s;
+  /* Phase 7e: was `transition: all .15s` — only background changes on
+     hover, so subscribe to that property explicitly. */
+  transition: background .15s ease;
 }
 .error-retry-btn:hover { background:var(--glass-hi); }
 
@@ -2870,9 +2872,21 @@ body[data-user-role="guest"] [data-guest-actions] { display: flex; }
   overflow: hidden;
 }
 .day-hero-progress-fill {
-  height: 100%; border-radius: 4px; width: 0%;
+  /* Phase 7e: was animating `width` over 900ms — a layout-triggering
+     property that forced the parent container's flex/block layout to
+     recalculate every frame for nearly a full second on each scan
+     submit. Switched to `transform: scaleX(N)` with `transform-origin:
+     left center` so the bar grows from a 100%-width base. The
+     transform path is GPU-composited and has no layout cost.
+     The fixed border-radius would visually distort under scaleX, but
+     since the bar is only 4px tall and the radius matches its half-
+     height, the distortion is invisible at production scale. */
+  height: 100%; border-radius: 4px;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
   background: linear-gradient(90deg, var(--green), var(--green-br));
-  transition: width 900ms cubic-bezier(0.16, 1, 0.3, 1),
+  transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1),
               background 300ms ease;
   position: relative;
 }
@@ -4282,6 +4296,10 @@ html {
   min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Phase 7e: contain rubber-band overscroll within the account sheet
+     so a pull-past-end can't trigger pull-to-refresh on the underlying
+     page on Chrome Android. */
+  overscroll-behavior: contain;
   scrollbar-width: none;
   /* Phase 6d.8: bottom padding is now conditional. Default = 14px
      breathing room (no actions strip showing). When .has-changes is
@@ -4574,7 +4592,10 @@ html {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: all .18s;
+  /* Phase 7e: was `transition: all .18s`. Aria-checked toggle changes
+     background, color, and box-shadow — enumerate those three so the
+     browser can skip every other property. */
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
   letter-spacing: -.01em;
   /* Override old positioning */
   position: static;
@@ -4828,7 +4849,11 @@ html {
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows .42s cubic-bezier(.22, 1, .36, 1);
-  will-change: grid-template-rows;
+  /* Phase 7e: dropped `will-change: grid-template-rows`. grid-template-rows
+     is not a compositor-accelerated property — `will-change` here just
+     promoted the element to its own layer and reserved memory without
+     any GPU benefit. `contain: layout paint` below is the load-bearing
+     optimization. */
   contain: layout paint;
   /* Phase 6d.1: explicit overflow:hidden on the wrapper. `contain: paint`
      alone wasn't reliably clipping the inner padding in the closed
@@ -6797,6 +6822,8 @@ html.help-sheet-open, html.help-sheet-open body {
      won. Merged into a single declaration here. */
   padding: 14px 18px 28px;
   overflow-y: auto;
+  /* Phase 7e: see .about-sheet-body for rationale. */
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -6914,6 +6941,10 @@ html.help-sheet-open, html.help-sheet-open body {
 .help-sheet-body {
   padding: 20px 22px 26px;
   overflow-y: auto;
+  /* Phase 7e: contain rubber-band overscroll within the sheet so a
+     pull-past-end gesture can't fire pull-to-refresh on the underlying
+     page or hijack the drag-to-close handler at the boundary. */
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -7383,6 +7414,8 @@ html.help-sheet-open, html.help-sheet-open body {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Phase 7e: contain overscroll. */
+  overscroll-behavior: contain;
   padding: 12px 22px 32px;
   outline: none;
 }
