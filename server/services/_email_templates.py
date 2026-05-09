@@ -42,10 +42,38 @@ Constraints:
   - Russian copy throughout, polite "вы" address, soft warm tone
 """
 
+import base64
 from datetime import datetime, timezone, timedelta
 
 from server.config import (
     OPERATOR_NAME, OPERATOR_CITY, UNISENDER_FROM_EMAIL, UNISENDER_FROM_NAME,
+)
+
+
+# ── Logo — same monoline geometric "fork" SVG used in the app header.
+# Encoded as a base64 data-URI inside an <img> tag because Gmail
+# (mobile especially) strips inline `<svg>` blocks for security but
+# happily renders SVG inside <img src="data:..."> data URIs. This is
+# the standard email-industry workaround for "I want my SVG logo".
+# `currentColor` is replaced with the literal hex (#0e0d0a) since
+# CSS context doesn't apply when the SVG is consumed by <img>. The
+# `xmlns` attribute is required for the SVG to be valid standalone.
+_LOGO_SVG_RAW = (
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 78 32" '
+    'fill="none" stroke="#0e0d0a" stroke-width="3.6" '
+    'stroke-linecap="round" stroke-linejoin="round">'
+    '<path d="M 17 5 Q 12 5 12 8.5 L 12 28"/>'
+    '<path d="M 5 14 L 18 14"/>'
+    '<circle cx="30" cy="19" r="9"/>'
+    '<path d="M 44 28 L 44 12 Q 44 9.5 47 9.5 Q 52 9.5 54 13"/>'
+    '<path d="M 60 5 L 60 28"/>'
+    '<path d="M 60 20 L 72 12"/>'
+    '<path d="M 60 20 L 72 28"/>'
+    '</svg>'
+)
+_LOGO_DATA_URI = (
+    "data:image/svg+xml;base64,"
+    + base64.b64encode(_LOGO_SVG_RAW.encode("utf-8")).decode("ascii")
 )
 
 
@@ -340,17 +368,18 @@ def _outer_close() -> str:
 
 
 def _logo_mark() -> str:
-    """The fork wordmark — Phase 9.1 swapped from inline SVG to a
-    styled text mark. Reason: Gmail mobile (iOS + Android) strips
-    inline `<svg>` blocks entirely, so the previous SVG path version
-    rendered as a blank gap. Text in Fraunces 500 lowercase reads as
-    a deliberate brand mark + works in every email client. Once we
-    have a public-URL PNG host (post-Amvera deploy) this can swap to
-    `<img src="https://myfork.ru/static/icons/fork-logo.png" alt="fork">`
-    for visual fidelity to the SVG paths."""
-    return ('<span style="font-family: \'Fraunces\', Georgia, serif; '
-            'font-weight: 500; font-size: 28px; color: #0e0d0a; '
-            'letter-spacing: -0.04em; line-height: 1;">fork</span>')
+    """The fork wordmark — same monoline geometric SVG icon as the app
+    header. Phase 9.2 restored the actual icon (Phase 9.1 had to
+    fallback to text because Gmail mobile strips inline `<svg>`).
+    The fix is to wrap the SVG in a base64 data-URI inside an `<img>`
+    tag — Gmail and modern clients render SVG-via-<img> fine even
+    though they strip raw `<svg>`. `alt="fork"` ensures Outlook on
+    Windows (which still doesn't render SVG in any form) shows the
+    brand name as fallback."""
+    return (
+        f'<img src="{_LOGO_DATA_URI}" alt="fork" width="88" height="32" '
+        'style="display: block; max-width: 88px; height: auto; border: 0;">'
+    )
 
 
 def _topbar(user: dict | None, issue_label: str) -> str:
