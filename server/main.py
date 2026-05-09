@@ -729,15 +729,17 @@ async def auth_upgrade_guest(
     # Send confirmation email — fire-and-forget so the endpoint returns
     # without waiting on Unisender. The token is generated synchronously
     # so we don't lose it if the response goes out before the task runs.
+    # Phase 8: fetch `fresh` BEFORE composing the template so the
+    # greeting picks up the just-set username/display_name from the
+    # upgrade write, not the stale guest-era values on `user`.
+    fresh = await get_user_by_id(DB_PATH, user["id"])
     raw = await generate_email_token(DB_PATH, user["id"], "confirm", new_email)
     verify_url = f"{APP_BASE_URL}/api/auth/email/verify?token={raw}"
-    tpl = confirm_email_template(verify_url)
+    tpl = confirm_email_template(verify_url, user=fresh, recipient=new_email)
     asyncio.create_task(send_email(
         to=new_email, subject=tpl["subject"],
         html=tpl["html"], text=tpl["text"],
     ))
-
-    fresh = await get_user_by_id(DB_PATH, user["id"])
     logger.info("guest_upgraded_to_user", extra={
         "user_id":        user["id"],
         "old_username":   user["username"],
@@ -1003,7 +1005,7 @@ async def request_email_confirmation(request: Request):
 
     raw = await generate_email_token(DB_PATH, user["id"], "confirm", email)
     verify_url = f"{APP_BASE_URL}/api/auth/email/verify?token={raw}"
-    tpl = confirm_email_template(verify_url)
+    tpl = confirm_email_template(verify_url, user=user, recipient=email)
 
     sent = await send_email(
         to=email, subject=tpl["subject"], html=tpl["html"], text=tpl["text"],
@@ -1057,7 +1059,7 @@ async def change_email(request: Request, payload: EmailChangeRequest):
     # triggered N rapid changes can't accumulate N valid links.
     raw = await generate_email_token(DB_PATH, user["id"], "confirm", new_email)
     verify_url = f"{APP_BASE_URL}/api/auth/email/verify?token={raw}"
-    tpl = confirm_email_template(verify_url)
+    tpl = confirm_email_template(verify_url, user=user, recipient=new_email)
     sent = await send_email(
         to=new_email, subject=tpl["subject"], html=tpl["html"], text=tpl["text"],
     )
@@ -1121,8 +1123,12 @@ async def verify_email(request: Request, token: str = ""):
 
     # Welcome email — fire-and-forget so the redirect isn't blocked on
     # the second send. asyncio.create_task copies the current context
-    # so logging request_id stays attached.
-    welcome = welcome_email_template(f"{APP_BASE_URL}/")
+    # so logging request_id stays attached. Phase 8: pass the verified
+    # user so the welcome greeting carries the recipient's display
+    # name + account number in the topbar.
+    welcome = welcome_email_template(
+        f"{APP_BASE_URL}/", user=user, recipient=user["email"],
+    )
     asyncio.create_task(send_email(
         to=user["email"], subject=welcome["subject"],
         html=welcome["html"], text=welcome["text"],
@@ -1154,7 +1160,7 @@ async def request_password_reset(
         # is still emailable; testing in Phase 2 happens via curl
         # against /password-reset/confirm directly.
         reset_url = f"{APP_BASE_URL}/reset?token={raw}"
-        tpl = reset_email_template(reset_url)
+        tpl = reset_email_template(reset_url, user=user, recipient=email)
 
         sent = await send_email(
             to=email, subject=tpl["subject"],

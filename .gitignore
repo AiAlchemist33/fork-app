@@ -13,6 +13,7 @@ plan*.json
 
 # Working design sketches kept locally for reference, not shipped to prod.
 fork-redesign.html
+Email Mockups/
 
 # User data — PII, must never be committed
 data/scans.db
