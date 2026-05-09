@@ -133,8 +133,10 @@ def _shared_styles() -> str:
     -moz-osx-font-smoothing: grayscale;
   }}
 
-  .page {{ width: 100%; background: #ebe5d8; padding: 32px 16px 48px 16px; }}
-  .container {{ max-width: 580px; margin: 0 auto; }}
+  /* Phase 9.1: .page/.container divs replaced by outer-table-with-
+     td-align-center (see _outer_open() in templates module).
+     Gmail mobile was rendering `margin: 0 auto` left-flush; the
+     `align="center"` HTML attribute is the bulletproof equivalent. */
 
   /* Topbar — 2-col table now. Logo left, dated meta right. */
   .topbar {{ padding: 8px 4px 28px 4px; }}
@@ -288,9 +290,11 @@ def _shared_styles() -> str:
     color: #6f6a5d; text-transform: uppercase;
   }}
 
-  /* Mobile <540px — collapse 2/3-col tables to single-column blocks. */
+  /* Mobile <540px — collapse 2/3-col tables to single-column blocks.
+     Note: outer-table page padding can't be overridden via CSS class
+     (it's an inline style on a td), but 32px outer padding still
+     works fine on phones — no override needed. */
   @media (max-width: 540px) {{
-    .page {{ padding: 20px 12px 36px 12px; }}
     .hero {{ padding: 40px 24px 28px 24px; }}
     .addressed, .action, .fallback, .security, .tip, .steps {{ padding-left: 24px; padding-right: 24px; }}
     h1 {{ font-size: 40px; }}
@@ -306,18 +310,47 @@ def _shared_styles() -> str:
 </style>"""
 
 
-def _logo_svg() -> str:
-    """The fork wordmark — same monoline geometric SVG used in the app
-    header. currentColor inheritance keeps it brand-correct."""
-    return """<svg class="logo-mark" viewBox="0 0 78 32" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="fork">
-              <path d="M 17 5 Q 12 5 12 8.5 L 12 28"/>
-              <path d="M 5 14 L 18 14"/>
-              <circle cx="30" cy="19" r="9"/>
-              <path d="M 44 28 L 44 12 Q 44 9.5 47 9.5 Q 52 9.5 54 13"/>
-              <path d="M 60 5 L 60 28"/>
-              <path d="M 60 20 L 72 12"/>
-              <path d="M 60 20 L 72 28"/>
-            </svg>"""
+def _outer_open() -> str:
+    """Phase 9.1: bulletproof centering. Replaces the previous
+    `<div class="page"><div class="container">` (which Gmail mobile
+    rendered left-flush instead of centered) with the email-industry-
+    standard outer-table-with-align-center pattern. The outer table
+    paints the cream page bg full-width; the inner table is fixed to
+    580px and centered via `align="center"` on the td (an HTML
+    attribute, not CSS — survives every client's CSS-stripping).
+    `bgcolor` attribute backs up the inline style for the same reason."""
+    return ('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" '
+            'bgcolor="#ebe5d8" style="background: #ebe5d8;">\n'
+            '    <tr>\n'
+            '      <td align="center" valign="top" style="padding: 32px 16px 48px 16px;">\n'
+            '        <table role="presentation" width="580" cellpadding="0" cellspacing="0" border="0" '
+            'style="max-width: 580px; width: 100%;">\n'
+            '          <tr>\n'
+            '            <td>\n')
+
+
+def _outer_close() -> str:
+    """Closes the outer-table-with-td-align-center pattern."""
+    return ('            </td>\n'
+            '          </tr>\n'
+            '        </table>\n'
+            '      </td>\n'
+            '    </tr>\n'
+            '  </table>')
+
+
+def _logo_mark() -> str:
+    """The fork wordmark — Phase 9.1 swapped from inline SVG to a
+    styled text mark. Reason: Gmail mobile (iOS + Android) strips
+    inline `<svg>` blocks entirely, so the previous SVG path version
+    rendered as a blank gap. Text in Fraunces 500 lowercase reads as
+    a deliberate brand mark + works in every email client. Once we
+    have a public-URL PNG host (post-Amvera deploy) this can swap to
+    `<img src="https://myfork.ru/static/icons/fork-logo.png" alt="fork">`
+    for visual fidelity to the SVG paths."""
+    return ('<span style="font-family: \'Fraunces\', Georgia, serif; '
+            'font-weight: 500; font-size: 28px; color: #0e0d0a; '
+            'letter-spacing: -0.04em; line-height: 1;">fork</span>')
 
 
 def _topbar(user: dict | None, issue_label: str) -> str:
@@ -326,7 +359,7 @@ def _topbar(user: dict | None, issue_label: str) -> str:
     label + dated month/year."""
     return f"""<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="topbar stack-on-mobile">
         <tr>
-          <td>{_logo_svg()}</td>
+          <td>{_logo_mark()}</td>
           <td class="topbar-meta" align="right">
             {_format_account_id(user)} · {issue_label}<br>
             {_current_month_year_ru()}
@@ -466,9 +499,8 @@ def confirm_email_template(
     html = (
         f"{_shared_head(title)}"
         f"{_shared_styles()}"
-        "</head>\n<body>\n"
-        '  <div class="page">\n'
-        '    <div class="container">\n'
+        "</head>\n<body>\n  "
+        f"{_outer_open()}"
         f"      {_topbar(user, 'Подтверждение')}\n"
         '      <div class="card">\n'
         '        <div class="hero">\n'
@@ -492,8 +524,7 @@ def confirm_email_template(
         '        </div>\n'
         '      </div>\n'
         f"      {_footer(recipient=recipient)}\n"
-        '    </div>\n'
-        '  </div>\n'
+        f"{_outer_close()}\n"
         '</body>\n</html>'
     )
 
@@ -532,9 +563,8 @@ def reset_email_template(
     html = (
         f"{_shared_head(title)}"
         f"{_shared_styles()}"
-        "</head>\n<body>\n"
-        '  <div class="page">\n'
-        '    <div class="container">\n'
+        "</head>\n<body>\n  "
+        f"{_outer_open()}"
         f"      {_topbar(user, 'Сброс пароля')}\n"
         '      <div class="card">\n'
         '        <div class="hero">\n'
@@ -558,8 +588,7 @@ def reset_email_template(
         '        </div>\n'
         '      </div>\n'
         f"      {_footer(recipient=recipient)}\n"
-        '    </div>\n'
-        '  </div>\n'
+        f"{_outer_close()}\n"
         '</body>\n</html>'
     )
 
@@ -598,9 +627,8 @@ def welcome_email_template(
     html = (
         f"{_shared_head(title)}"
         f"{_shared_styles()}"
-        "</head>\n<body>\n"
-        '  <div class="page">\n'
-        '    <div class="container">\n'
+        "</head>\n<body>\n  "
+        f"{_outer_open()}"
         f"      {_topbar(user, 'Добро пожаловать')}\n"
         '      <div class="card">\n'
         '        <div class="hero">\n'
@@ -624,8 +652,7 @@ def welcome_email_template(
         '        </div>\n'
         '      </div>\n'
         f"      {_footer(recipient=recipient, footer_note='Письмо отправлено после подтверждения email.')}\n"
-        '    </div>\n'
-        '  </div>\n'
+        f"{_outer_close()}\n"
         '</body>\n</html>'
     )
 
