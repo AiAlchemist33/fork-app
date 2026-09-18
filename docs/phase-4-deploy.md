@@ -10,7 +10,7 @@
 ## 0 · Status snapshot
 
 **What is being deployed.** Single FastAPI process serving the
-HowManyCalories PWA — backend (`server/`) + three SPAs in `static/`
+FORK app PWA — backend (`server/`) + three SPAs in `static/`
 (scanner `/`, admin `/admin`, login `/login`). Stateful pieces live on
 disk: SQLite DB at `data/scans.db`, scan images at `data/images/`,
 avatar PNGs at `data/avatars/`. No external DB, no Redis, no broker.
@@ -39,6 +39,8 @@ of these can be done by Claude.
 | # | Item | Status | Where it surfaces |
 |---|------|--------|-------------------|
 | 1 | *Replace placeholder operator name* `Иванов Иван Иванович` + city `Москва` with real ФИО + city of residence | TODO | `server/config.py:75-76` (env-overridable: `OPERATOR_NAME`, `OPERATOR_CITY`); also rendered into `/privacy`, `/terms`, and the Roskomnadzor template |
+| 2 | *Provision the Unisender Go API key* | TODO | env var `UNISENDER_API_KEY` (set on Amvera, **never** in repo) |
+| 3 | *Keep Git credentials out of the remote URL* | DONE | `origin` is a plain HTTPS URL; auth resolves through Windows Credential Manager |
 | 4 | *Verify sender domain* `myfork.ru` at Unisender Go (DKIM + SPF + return-path) — needs DNS live first, so this comes during step 3 below, not before | TODO | Without verification, Yandex/Mail.ru spam-filter our confirmation/reset emails — most Russian inboxes will never see them |
 | 5 | *Submit Roskomnadzor notification* of personal-data processing | TODO | Template at `docs/roskomnadzor-notification.md` — Eugene fills `[ЗАПОЛНИТЬ]` fields, submits at https://pd.rkn.gov.ru → free, ~30-day approval |
 | 6 | *Confirm Amvera billing tier* — recommended 5GB volume; budget 3000-5000 RUB/month per `plan-next-chat.json.decisions_made.hosting_budget` | TODO | https://amvera.ru |
@@ -55,7 +57,7 @@ of these can be done by Claude.
 
 ### 2a · Create the project
 1. Eugene logs into https://amvera.ru
-2. Create new project, name `howmanycalories` (or similar)
+2. Create new project, name `fork-app` (or similar)
 3. **Connect GitHub repo** `Druid369/HowManyCalories`. Amvera will
    auto-pull on every push to `main`.
 4. Build config:
@@ -180,7 +182,7 @@ If Railway does have real data:
 ## 5 · Pre-cutover smoke test
 
 Before flipping DNS, exercise everything end-to-end on Amvera's
-staging URL (Amvera assigns one like `howmanycalories.amvera.io` or
+staging URL (Amvera assigns one like `fork-app.amvera.io` or
 similar before custom-domain).
 
 Run through this list **in order**:
@@ -293,7 +295,7 @@ fix forward under live traffic.**
 
 Once Amvera has run cleanly for 48h+:
 
-1. Edit `c:/Work/HowManyCalories/CLAUDE.md`:
+1. Edit `c:/Work/fork-app/CLAUDE.md`:
    - Replace "Production target: Railway (Procfile + runtime.txt)"
      with "Production target: Amvera (custom domain myfork.ru)"
    - Update the architecture / "Running" sections accordingly
@@ -306,11 +308,12 @@ Once Amvera has run cleanly for 48h+:
 
 ## 10 · Reference — secret rotation log
 
-Maintain this table going forward. Every time a secret rotates, add a
-row. Never write the secret itself — just date + reason + who.
+Keep this log **outside this repository**, in private ops notes.
 
-| Date | Secret | Reason | Action by |
-|------|--------|--------|-----------|
+A repo that may become public must never carry a record of which
+credentials are live, burned, or pending rotation — that is a roadmap,
+not documentation. Record date + reason + owner privately; never the
+secret, and never its prefix.
 
 ---
 
